@@ -1,0 +1,74 @@
+---
+title: "Intro to ggplot"
+author: "Haley Greenyer"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libs}
+#you can install with:
+#install.libraries('ggplot2')
+library(ggplot2)
+```
+
+
+```{r load example data}
+#load R data set 
+df_cars <- mtcars
+
+#if you would like to browse available R datasets you can use:
+#datasets::
+
+#this will bring up a list of datasets with bried descriptions 
+#I would recommend the Iris dataset for practice 
+
+```
+
+```{r single variable plot}
+#to make the most basic plot we need the following: 
+#data: provide a dataset that you want to plot
+#mapping: you can use the aesthetics mapping function aes() to dictate how variables should be mapped
+#geom layering: functions that come after the main ggplot call to indicate how you want to represent the data points
+
+#here's an example of just plotting one variable 
+ggplot(data = df_cars, mapping = aes(x=gear)) +
+  geom_histogram(bins = 3)
+```
+
+```{r two variable plot}
+#here's an example of a two-variable plot
+ggplot(data = df_cars, mapping = aes(x=mpg, y=wt)) +
+  geom_point()
+
+#we can add on a linear model trend line: 
+ggplot(data = df_cars, mapping = aes(x=mpg, y=wt)) +
+  geom_point() + 
+  geom_smooth(formula = y ~ x, method = "lm") 
+
+#we can add an additional variable by mapping color 
+ggplot(data = df_cars, mapping = aes(x=mpg, y=wt, color=hp)) +
+  geom_point() + 
+  geom_smooth(formula = y ~ x, method = "lm") 
+```
+
+```{r Barplot}
+df <- datasets::iris
+
+ggplot(data=df, aes(x=Sepal.Length)) +
+  geom_density(aes(fill=Species)) 
+  
+ggplot(data=df, aes(x=Sepal.Length, y=Sepal.Width, color=Species)) +
+  geom_point()
+
+```
+
+```{r install new package}
+install.packages("BiocManager")
+install.packages("EnhancedVolcano")
+
+```
