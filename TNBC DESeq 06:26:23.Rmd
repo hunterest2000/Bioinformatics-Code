@@ -1,0 +1,137 @@
+---
+title: "TNBC DESeq2"
+author: "Hunter St Pierre"
+date: "2023-06-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r libraries}
+library(readxl)
+library(pheatmap)
+library(dplyr)
+library(DESeq2)
+library(volcanoPlot)
+
+
+
+```
+
+```{r load in file}
+library(readxl)
+Copy_of_NCI_raw_counts <- read_excel("Library/CloudStorage/OneDrive-UniversityofNewEngland/Copy of NCI_raw_counts.xlsx")
+View(Copy_of_NCI_raw_counts)
+
+```
+
+```{r data manipulation}
+#change data to matrix and remove columns with characters
+nci_counts <- as.matrix(Copy_of_NCI_raw_counts[,c(-1,-10)])
+#change to data frame
+nci_counts <- as.data.frame(nci_counts)
+#rename rows to Ensembl IDs
+row.names(nci_counts) <- Copy_of_NCI_raw_counts$Ensembl_ID
+#remove 0s
+nci_counts <- nci_counts[rowSums(nci_counts) > 0,]
+#subset only TNBC only cultures for comparison
+TNBC <- nci_counts[,c(3:7)]
+
+```
+
+```{r make column data}
+TNBC.col_data <- as.data.frame(matrix(nrow = 5, ncol = 2))
+#name columns
+colnames(TNBC.col_data) <- c('patient_ID','type_BC')
+TNBC.col_data[,1] <- colnames(TNBC)
+TNBC.col_data[,2] <- c('TNBC')
+
+#convert variables to factors
+TNBC.col_data$type_BC <- factor(TNBC.col_data$type_BC)
+
+```
+
+```{r DESeq}
+#define experimental design or formula
+design <- ~type_BC
+
+#import data using DESeq
+dds <- DESeqDataSetFromMatrix(countData = TNBC, colData = TNBC.col_data, design = ~ 1)
+
+dds <- DESeq(dds)
+
+results <- results(dds)
+
+significant_results <- subset(results, padj < 0.05 & abs(log2FoldChange) > 1)
+
+# Explore the significant results
+head(significant_results)
+```
+```{r results}
+#get list of upregulated genes
+upreg_genes <- subset(rownames(results), results$pvalue < 0.05 & results$log2FoldChange > 1)
+
+#get list of downregulated genes
+downreg_genes <- subset(rownames(results), results$pvalue < 0.05 & results$log2FoldChange < -1)
+
+#extract normalized counts
+deseq_counts <- counts(dds, normalized=TRUE)
+
+#get count table containing only DEGs
+deg_counts <- subset(deseq_counts, row.names(deseq_counts) %in% upreg_genes | row.names(deseq_counts) %in% downreg_genes)
+
+
+```
+
+```{r Heat Map, echo=FALSE}
+#create heatmap object (silent plotting)
+DEG_heatmap <-pheatmap(deg_counts, show_rownames=FALSE,
+         cluster_cols=FALSE, scale = 'row', cluster_rows=TRUE, labels_row = rownames(upreg_genes), silent = TRUE)
+
+#extract clusters
+clust_out <- as.data.frame(as.character(cutree(DEG_heatmap$tree_row,k=3)))
+rownames(clust_out) <- rownames(deg_counts)
+colnames(clust_out) <- 'cluster'
+clust_out$cluster <- as.factor(clust_out$cluster)
+
+#re-plot heatmap with clusters 
+pheatmap(deg_counts, show_rownames=FALSE,
+         cluster_cols=FALSE, scale = 'row', cluster_rows=TRUE, annotation_row = clust_out,treeheight_row = 0)
+
+#order clusters 
+clusters <- arrange(clust_out, clust_out$cluster)
+
+#export clusters as csv 
+write.csv(clusters, 'test_clusters')
+
+```
+
+```{r volcano plot}
+#turn results into a table
+res_df <- as.data.frame(results)
+#to add a column: (make sure to check the rownames (ID) and gene names line up) 
+res_df$new_col_name <- nci_counts$gene_names
+#install package
+install.packages('EnhancedVolcano')
+#to make a volcano plot: 
+volcano
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("EnhancedVolcano")
+
+library(EnhancedVolcano)
+
+
+
+
+
+```
